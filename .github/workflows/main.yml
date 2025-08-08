@@ -1,0 +1,65 @@
+name: Build and Release APKs
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+      - 'build-*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Generate tag (for manual run only)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          TAG="build-$(date +'%Y%m%d-%H%M')"
+          echo "TAG_NAME=$TAG" >> $GITHUB_ENV
+          git tag $TAG
+          git push origin $TAG
+
+      - name: Set release tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "RELEASE_TAG=${TAG_NAME}" >> $GITHUB_ENV
+          else
+            echo "RELEASE_TAG=${GITHUB_REF_NAME}" >> $GITHUB_ENV
+          fi
+          echo "RELEASE_NAME=rvx-builder build $(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: docker build . --pull -t rvx-builder --no-cache
+
+      - name: Run builder container
+        run: |
+          mkdir -p revanced
+          docker run --rm \
+            -v ${{ github.workspace }}/revanced:/app/rvx-builder/revanced \
+            rvx-builder \
+            -d "Custom branding icon YouTube" \
+            -d "Custom branding icon YouTube Music" \
+            -d "Custom branding name YouTube" \
+            -d "Custom branding name YouTube Music" \
+            -d "Custom branding name Reddit" \
+            -d "Theme" \
+            -e "MaterialYou"
+
+      - name: List built APKs
+        run: ls -lh revanced
+
+      - name: Upload APKs to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          files: revanced/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
