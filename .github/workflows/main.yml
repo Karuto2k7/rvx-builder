@@ -44,13 +44,14 @@ jobs:
           docker run --rm \
             -v ${{ github.workspace }}/revanced:/app/rvx-builder/revanced \
             rvx-builder \
-            -d "Custom branding icon YouTube" \
-            -d "Custom branding icon YouTube Music" \
-            -d "Custom branding name YouTube" \
-            -d "Custom branding name YouTube Music" \
-            -d "Custom branding name Reddit" \
-            -d "Theme" \
-            -e "MaterialYou"
+            bash -c 'node index.js \
+              -d "Custom branding icon YouTube" \
+              -d "Custom branding icon YouTube Music" \
+              -d "Custom branding name YouTube" \
+              -d "Custom branding name YouTube Music" \
+              -d "Custom branding name Reddit" \
+              -d "Theme" \
+              -e "MaterialYou"'
 
       - name: List built APKs
         run: ls -lh revanced
